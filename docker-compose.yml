@@ -1,0 +1,117 @@
+version: '3.9'
+
+services:
+
+  proxy_dispatcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proxy_dispatcher
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    environment:
+      APP_ENV: local
+      APP_KEY: base64:9xnszFVmiodii/g+oM88wvYv4B6ns3WHMAiyWUOcwFg=
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_DATABASE: proxy_dispatcher
+      DB_USERNAME: laravel
+      DB_PASSWORD: secret
+      SESSION_DRIVER: database
+      REDIS_HOST: redis_telemetry
+      REDIS_PORT: 6379
+      NODE_A_URL: http://server_node_a:3000
+      NODE_B_URL: http://server_node_b:3001
+      NODE_C_URL: http://server_node_c:3002
+    depends_on:
+      - mysql
+      - redis_telemetry
+      - server_node_a
+      - server_node_b
+      - server_node_c
+    networks:
+      - dispatcher_net
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: proxy_dispatcher
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - dispatcher_net
+
+  redis_telemetry:
+    image: redis:7-alpine
+    container_name: redis_telemetry
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dispatcher_net
+
+  server_node_a:
+    image: node:20-alpine
+    container_name: server_node_a
+    working_dir: /app
+    volumes:
+      - ./mock-node:/app   
+    command: node server.js
+    environment:
+      NODE_ID: server_node_a
+      PORT: 3000
+      WEIGHT: 3
+    ports:
+      - "3001:3000"
+    networks:
+      - dispatcher_net
+
+  server_node_b:
+    image: node:20-alpine
+    container_name: server_node_b
+    working_dir: /app
+    volumes:
+      - ./mock-node:/app
+    command: node server.js
+    environment:
+      NODE_ID: server_node_b
+      PORT: 3001
+      WEIGHT: 2
+    ports:
+      - "3002:3000"
+    networks:
+      - dispatcher_net
+
+  server_node_c:
+    image: node:20-alpine
+    container_name: server_node_c
+    working_dir: /app
+    volumes:
+      - ./mock-node:/app
+    command: node server.js
+    environment:
+      NODE_ID: server_node_c
+      PORT: 3002
+      WEIGHT: 1
+    ports:
+      - "3003:3000"
+    networks:
+      - dispatcher_net
+
+networks:
+  dispatcher_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  mysql_data:
