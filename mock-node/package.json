@@ -1,0 +1,10 @@
+{
+    "name": "mock-node",
+    "version": "1.0.0",
+    "main": "server.js",
+    "scripts": {
+        "start:a": "node server.js server_node_a",
+        "start:b": "node server.js server_node_b",
+        "start:c": "node server.js server_node_c"
+    }
+}
